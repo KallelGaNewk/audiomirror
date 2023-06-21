@@ -2,6 +2,8 @@
 
 This is a program that allows you to loop audio from one speaker to another. It is useful for testing the audio quality of speakers and headphones, quick changes of headsets, and other similar use cases.
 
+<sub>Different sampple rates (like 48KHz with 96KHz) will not work, both speakers must have the same sample rate.</sub>
+
 ![](usage.gif)
 
 ## Usage
@@ -19,6 +21,9 @@ This is a program that allows you to loop audio from one speaker to another. It 
 3. Navigate to the project directory in your terminal.
 4. Connect two playback devices to your computer.
 5. Run the program by running `cargo run --release` in your terminal.
+
+## Known issues
+- Upchanneling isn't a thing yet, stereo to surround has issues.
 
 ## Contributing
 
