@@ -7,6 +7,7 @@ edition = "2021"
 cpal = "0.15.2"
 ctrlc = "3.4.0"
 hound = "3.5.0"
+rand = "0.8.5"
 
 [dependencies.audio-device]
 version = "0.1.0-alpha.6"
