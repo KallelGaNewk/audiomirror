@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --release
     - name: Create release
       id: create_release
       uses: actions/create-release@v1
@@ -33,6 +33,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./target/debug/audiomirror.exe
+        asset_path: ./target/release/audiomirror.exe
         asset_name: audiomirror.exe
         asset_content_type: application/octet-stream
