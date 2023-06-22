@@ -1,6 +1,12 @@
-use std::{sync::mpsc::channel, io::{self, Write}};
+use std::{
+    io::{self, Write},
+    sync::mpsc::channel,
+};
 
-use cpal::{Host, Device, traits::{HostTrait, DeviceTrait}};
+use cpal::{
+    traits::{DeviceTrait, HostTrait},
+    Device, Host,
+};
 
 pub fn handle_ctrlc() {
     let (tx, rx) = channel();
