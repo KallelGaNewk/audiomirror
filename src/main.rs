@@ -6,13 +6,13 @@ mod utils;
 fn main() {
     let host = cpal::default_host();
 
-    let (outputstream, inputstream) = match loopback::run(host) {
+    let (anchorstream, mirrorstream) = match loopback::run(host) {
         Some(value) => value,
         None => return,
     };
 
-    outputstream.play().unwrap();
-    inputstream.play().unwrap();
+    anchorstream.play().unwrap();
+    mirrorstream.play().unwrap();
 
     utils::handle_ctrlc();
 }
