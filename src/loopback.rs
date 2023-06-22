@@ -75,7 +75,7 @@ fn start_loopback(anchorspeaker: cpal::Device, mirrorspeaker: cpal::Device) -> (
         }
     };
 
-    let outputstream = anchorspeaker
+    let anchorstream = anchorspeaker
         .build_input_stream(
             &anchorspeaker_config,
             data_callback,
@@ -84,7 +84,7 @@ fn start_loopback(anchorspeaker: cpal::Device, mirrorspeaker: cpal::Device) -> (
         )
         .unwrap();
 
-    let inputstream = mirrorspeaker
+    let mirrorstream = mirrorspeaker
         .build_output_stream(
             &mirrorspeaker_config,
             move |data: &mut [f32], _: &_| {
@@ -97,5 +97,5 @@ fn start_loopback(anchorspeaker: cpal::Device, mirrorspeaker: cpal::Device) -> (
         )
         .unwrap();
 
-    (outputstream, inputstream)
+    (anchorstream, mirrorstream)
 }
