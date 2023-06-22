@@ -22,9 +22,6 @@ This is a program that allows you to loop audio from one speaker to another. It 
 4. Connect two playback devices to your computer.
 5. Run the program by running `cargo run --release` in your terminal.
 
-## Known issues
-- Upchanneling isn't a thing yet, stereo to surround has issues.
-
 ## Contributing
 
 If you find any bugs or have any suggestions for improvements, feel free to open an issue or submit a pull request.
