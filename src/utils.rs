@@ -1,6 +1,6 @@
 use std::{
     io::{self, Write},
-    sync::mpsc::channel,
+    sync::mpsc::channel, process,
 };
 
 use cpal::{
@@ -67,4 +67,14 @@ pub fn prompt(question: &str) -> String {
     io::stdin().read_line(&mut input).unwrap();
 
     input.trim().to_string()
+}
+
+pub fn handle_result<T>(result: anyhow::Result<T>) -> T {
+    match result {
+        Ok(v) => v,
+        Err(err) => {
+            println!("\x1b[31m{}\x1b[0m", err);
+            process::exit(1);
+        }
+    }
 }

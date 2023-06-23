@@ -1,14 +1,10 @@
-use std::{
-    io::{Cursor, ErrorKind},
-    net::UdpSocket,
-    process,
-    time::Duration,
-};
+use std::{io::ErrorKind, net::UdpSocket, process, time::Duration};
 
+use anyhow::Result;
 use cpal::{traits::DeviceTrait, Device, Stream};
 use serde::{Deserialize, Serialize};
 
-use crate::utils;
+use crate::utils::{self, handle_result};
 
 pub enum StreamType {
     Client,
@@ -22,12 +18,12 @@ struct Data {
     data: Vec<f32>,
 }
 
-pub fn run(host: cpal::Host, ip: String, port: u16, streamtype: StreamType) -> Stream {
+pub fn run(host: cpal::Host, ip: String, port: u16, streamtype: StreamType) -> Result<Stream> {
     let localspeaker = utils::prompt_speaker(&host);
 
     print!("\x1B[2J\x1B[1;1H");
 
-    let localspeaker_config = localspeaker.default_output_config().unwrap().config();
+    let localspeaker_config = localspeaker.default_output_config()?.config();
 
     println!(
         "Local speaker: \"\x1b[32m{}\x1b[0m\" ({} channels, {} Hz)",
@@ -36,22 +32,21 @@ pub fn run(host: cpal::Host, ip: String, port: u16, streamtype: StreamType) -> S
         localspeaker_config.sample_rate.0
     );
 
-    match streamtype {
+    let stream = match streamtype {
         StreamType::Client => loopback_client(localspeaker, ip, port),
         StreamType::Server => loopback_server(localspeaker, ip, port),
-    }
+    };
+
+    stream
 }
 
-fn loopback_client(localspeaker: Device, ip: String, port: u16) -> Stream {
-    let socket = UdpSocket::bind(format!("{}:{}", ip, port)).unwrap();
-    socket.set_nonblocking(true).unwrap();
+fn loopback_client(localspeaker: Device, ip: String, port: u16) -> Result<Stream> {
+    let socket = UdpSocket::bind(format!("{}:{}", ip, port))?;
+    socket.set_nonblocking(true)?;
 
-    println!(
-        "Socket bound to {}",
-        socket.local_addr().unwrap().to_string()
-    );
+    println!("Server opened in {}", socket.local_addr()?.to_string());
 
-    let localspeaker_config = localspeaker.default_output_config().unwrap().config();
+    let localspeaker_config = localspeaker.default_output_config()?.config();
     let data_callback = move |data: &mut [f32], _: &_| {
         let mut buffer = [0u8; 65535];
         let bytes = match socket.recv(&mut buffer[..]) {
@@ -60,22 +55,23 @@ fn loopback_client(localspeaker: Device, ip: String, port: u16) -> Stream {
                 if err.kind() == ErrorKind::WouldBlock {
                     return;
                 } else {
-                    println!("\x1b[31m{}\x1b[0m", err);
-                    process::exit(1);
+                    handle_result(Err(err.into()))
                 }
             }
         };
 
-
         let remotespeaker: Data = match bincode::deserialize(&buffer[..bytes]) {
             Ok(v) => v,
-            Err(err) => {
-                println!("\x1b[31m{}\x1b[0m", err);
-                process::exit(1);
-            }
+            Err(err) => handle_result(Err(err.into())),
         };
 
-        println!("Remotespeaker: {} channels, {} Hz", remotespeaker.channels, remotespeaker.sample_rate);
+        if remotespeaker.sample_rate != localspeaker_config.sample_rate.0 {
+            println!(
+                "\x1b[31mRemote sample rate ({}) does not match local sample rate ({}), ignoring.\x1b[0m",
+                remotespeaker.sample_rate, localspeaker_config.sample_rate.0
+            );
+            return;
+        }
 
         let mut output_data = Vec::new();
         let coming_data = remotespeaker.data.as_slice();
@@ -95,11 +91,10 @@ fn loopback_client(localspeaker: Device, ip: String, port: u16) -> Stream {
                 Some(v) => *v = *sample,
                 None => continue,
             }
-            // data[i] = *sample;
         }
     };
 
-    let localstream = match localspeaker.build_output_stream(
+    let localstream = localspeaker.build_output_stream(
         &localspeaker_config,
         data_callback,
         move |err| {
@@ -107,47 +102,20 @@ fn loopback_client(localspeaker: Device, ip: String, port: u16) -> Stream {
             process::exit(1);
         },
         Some(Duration::from_secs(10)),
-    ) {
-        Ok(v) => v,
-        Err(err) => {
-            println!("\x1b[31m{}\x1b[0m", err);
-            process::exit(1);
-        }
-    };
+    )?;
 
-    localstream
+    Ok(localstream)
 }
 
-fn loopback_server(localspeaker: Device, ip: String, port: u16) -> Stream {
-    let socket = match UdpSocket::bind("0.0.0.0:0") {
-        Ok(v) => {
-            println!("Socket OK");
-            v
-        }
-        Err(err) => {
-            println!("\x1b[31m{}\x1b[0m", err);
-            process::exit(1);
-        }
-    };
-    socket.set_broadcast(true).unwrap();
-    match socket.set_nonblocking(true) {
-        Ok(_) => {}
-        Err(err) => {
-            println!("\x1b[31m{}\x1b[0m", err);
-            process::exit(1);
-        }
-    }
+fn loopback_server(localspeaker: Device, ip: String, port: u16) -> Result<Stream> {
+    let socket = UdpSocket::bind("0.0.0.0:0")?;
+    socket.set_broadcast(true)?;
+    socket.set_nonblocking(true)?;
 
-    println!(
-        "Socket bound to {}",
-        socket.local_addr().unwrap().to_string()
-    );
     println!("Connecting to {}:{}", ip, port);
+    socket.connect(format!("{}:{}", ip, port))?;
 
-    socket.connect(format!("{}:{}", ip, port)).unwrap();
-
-    let localspeaker_config = localspeaker.default_output_config().unwrap().config();
-
+    let localspeaker_config = localspeaker.default_output_config()?.config();
     let data_callback = move |raw_data: &[f32], _: &_| {
         let data = raw_data.to_vec();
 
@@ -157,31 +125,27 @@ fn loopback_server(localspeaker: Device, ip: String, port: u16) -> Stream {
             data,
         };
 
-        let data = bincode::serialize(&data).unwrap();
+        let data = match bincode::serialize(&data) {
+            Ok(v) => v,
+            Err(err) => handle_result(Err(err.into())),
+        };
 
         match socket.send(&data) {
             Ok(_) => {}
             Err(err) => match err.kind() {
                 ErrorKind::WouldBlock => return,
-                _ => {
-                    println!("\x1b[31m{}\x1b[0m", err);
-                    process::exit(1);
-                }
+                ErrorKind::NotConnected => return,
+                _ => handle_result(Err(err.into())),
             },
         }
     };
 
-    let localstream = localspeaker
-        .build_input_stream(
-            &localspeaker_config,
-            data_callback,
-            move |err| {
-                println!("\x1b[31m{}\x1b[0m", err);
-                process::exit(1);
-            },
-            Some(Duration::from_secs(10)),
-        )
-        .unwrap();
+    let localstream = localspeaker.build_input_stream(
+        &localspeaker_config,
+        data_callback,
+        move |err| handle_result(Err(err.into())),
+        Some(Duration::from_secs(10)),
+    )?;
 
-    localstream
+    Ok(localstream)
 }

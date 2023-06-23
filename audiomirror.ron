@@ -1,0 +1,19 @@
+Config(
+    lan: LanConfig(
+        // List devices using `audiomirror -l`
+        device: "Speakers",
+
+        // `client` will receive the audio,
+        // and `server` will send.
+        role: "client",
+
+        // Specify server to connect or bind the server.
+        ip: "127.0.0.1",
+        port: 9727,
+    ),
+    local: LocalConfig (
+        // List devices using `audiomirror -l`
+        anchor_device: "Headphones",
+        mirror_device: "Speakers"
+    ),
+)
