@@ -22,6 +22,13 @@ This is a program that allows you to loop audio from one speaker to another. It 
 4. Connect two playback devices to your computer.
 5. Run the program by running `cargo run --release` in your terminal.
 
+## To do
+- [x] Connection between computers, over the internet.
+- [ ] Polish the code
+  - [ ] Reject connection if different sample rates.
+- [ ] Config file
+- [ ] Add support for more than two speakers.
+
 ## Contributing
 
 If you find any bugs or have any suggestions for improvements, feel free to open an issue or submit a pull request.
